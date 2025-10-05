@@ -23,6 +23,10 @@ public class NotesService {
         return notesrepo.findAll();
     }
 
+    public List<NotesModel> getNotesByUserId(Long userId) {
+        return notesrepo.findByUserId(userId);
+    }
+
     public NotesModel createNote(NotesModel notes) {
         // Validate user exists
         if (!userRepository.existsById(notes.getUserId())) {

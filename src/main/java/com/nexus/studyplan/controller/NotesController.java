@@ -1,16 +1,13 @@
 package com.nexus.studyplan.controller;
 
 import com.nexus.studyplan.model.NotesModel;
-import com.nexus.studyplan.model.UserModel;
 import com.nexus.studyplan.service.NotesService;
-import org.aspectj.weaver.ast.Not;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
+import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import com.nexus.studyplan.repository.UserRepository;
-import org.springframework.stereotype.Service;
-import com.nexus.studyplan.repository.NotesRepository;
 import java.util.Map;
 
 @RestController
@@ -25,16 +22,34 @@ public class NotesController {
         this.userRepository = userRepository;
     }
     @GetMapping
-    public List<NotesModel> getAllNotes(){
-        return notesService.getAllNotes();
+    public ResponseEntity<?> getAllNotes(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userid");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login to get Notes");
+        }
+        List<NotesModel> notes = notesService.getNotesByUserId(userId);
+        return ResponseEntity.ok(notes);
     }
     @PostMapping("/new")
-    public ResponseEntity<?> createNote(@RequestBody NotesModel notes) {
-        // Check if userId is provided
-        if (notes.getUserId() == null) {
-            return ResponseEntity.badRequest()
-                .body("User ID is required to create a note");
+    public ResponseEntity<?> createNote(@RequestBody NotesModel notes, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userid");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login to create Notes");
         }
+        
+        // Validate input lengths
+        if (notes.getTitle() != null && notes.getTitle().length() > 500) {
+            return ResponseEntity.badRequest().body("Title is too long (max 500 characters)");
+        }
+        if (notes.getDescription() != null && notes.getDescription().length() > 1000) {
+            return ResponseEntity.badRequest().body("Description is too long (max 1000 characters)");
+        }
+        if (notes.getContent() != null && notes.getContent().length() > 10000) {
+            return ResponseEntity.badRequest().body("Content is too long (max 10000 characters)");
+        }
+        
+        // Set the userId from session
+        notes.setUserId(userId);
         
         // Validate and create note
         try {
@@ -45,10 +60,10 @@ public class NotesController {
         }
     }
     @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateNote(@PathVariable Long id, @RequestBody NotesModel notes) {
-        if (notes.getUserId() == null) {
-            return ResponseEntity.badRequest()
-                    .body("User ID is required to update a note");
+    public ResponseEntity<?> updateNote(@PathVariable Long id, @RequestBody NotesModel notes, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userid");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login to update Notes");
         }
         
         try {
@@ -57,10 +72,23 @@ public class NotesController {
             if (existingNote == null) {
                 return ResponseEntity.badRequest().body("Note not found");
             }
-            if (!existingNote.getUserId().equals(notes.getUserId())) {
+            if (!existingNote.getUserId().equals(userId)) {
                 return ResponseEntity.badRequest().body("You can only update your own notes");
             }
             
+            // Validate input lengths
+            if (notes.getTitle() != null && notes.getTitle().length() > 500) {
+                return ResponseEntity.badRequest().body("Title is too long (max 500 characters)");
+            }
+            if (notes.getDescription() != null && notes.getDescription().length() > 1000) {
+                return ResponseEntity.badRequest().body("Description is too long (max 1000 characters)");
+            }
+            if (notes.getContent() != null && notes.getContent().length() > 10000) {
+                return ResponseEntity.badRequest().body("Content is too long (max 10000 characters)");
+            }
+            
+            // Set the userId from session
+            notes.setUserId(userId);
             NotesModel updatedNote = notesService.updateNote(id, notes);
             return ResponseEntity.ok(updatedNote);
         } catch (RuntimeException e) {
@@ -69,11 +97,11 @@ public class NotesController {
     }
 
     @DeleteMapping("/remove/{id}")
-    public ResponseEntity<?> deleteNote(@PathVariable Long id, @RequestBody Map<String, Long> request) {
-        Long userId = request.get("userId");
+    public ResponseEntity<?> deleteNote(@PathVariable Long id, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userid");
         
         if (userId == null) {
-            return ResponseEntity.badRequest().body("User ID is required to delete a note");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login to delete Notes");
         }
         
         try {

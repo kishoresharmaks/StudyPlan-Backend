@@ -2,7 +2,6 @@ package com.nexus.studyplan.controller;
 
 import com.nexus.studyplan.model.UserModel;
 import com.nexus.studyplan.service.UserService;
-import org.apache.catalina.User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

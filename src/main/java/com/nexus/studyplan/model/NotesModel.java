@@ -10,9 +10,16 @@ public class NotesModel {
     @Id
     @GeneratedValue( strategy = GenerationType.IDENTITY)
     private long id;
+    
+    @Column(length = 500)
     private String title;
+    
+    @Column(length = 1000)
     private String description;
-    private  String content;
+    
+    @Column(length = 10000)
+    private String content;
+    
     private Long userId;
 
     public NotesModel(long id, String title, String description, String content) {
